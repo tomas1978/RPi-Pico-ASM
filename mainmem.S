@@ -12,8 +12,8 @@
 	.EQU LED_PIN1, 18
 	.EQU LED_PIN2, 19
 	.EQU LED_PIN3, 20
-	.EQU INPUT_PIN1, 21
-	.EQU INPUT_PIN2, 22
+	.EQU INPUT_PIN1, 0
+	.EQU INPUT_PIN2, 7
 	
 
 	.EQU sleep_time,	200
@@ -24,10 +24,6 @@
 	.align  4	@ necessary alignment
 main:
 @ Init each of the three pins and set them to output
-
-		BL	stdio_init_all
-
-
 	MOV	R0, #LED_PIN1		
 	BL	gpioinit
 	MOV	R0, #LED_PIN2
@@ -39,50 +35,35 @@ main:
 	MOV R0, #INPUT_PIN2
 	BL gpioinit
 	
+	BL	stdio_init_all
 
 loop:
 @ Turn each pin on, sleep and then turn the pin off
-	MOV R0, #INPUT_PIN1
-	BL gpio_get  @16 = GND, 18=3,3V
-	CMP R0, #18
-	BEQ pin1_on
-	
-	MOV R0, #INPUT_PIN2
-	BL gpio_get
-	CMP R0, #18
-	BEQ pin1_off
-	
-		
-	MOV	R1, R0			@ Move button state R0 to reg R1 to show number with printf
-	LDR	R0, =helloworld	@ load address of helloworld string
-	BL	printf			@ Call pico_printf
-	
-	
-	
-	@MOV	R0, #LED_PIN1	
-	@BL	gpio_on
-	@LDR	R0, =sleep_time
-	@BL	sleep_ms
-	@MOV	R0, #LED_PIN1	
-	@BL	gpio_off
-	@MOV	R0, #LED_PIN2
-	@BL	gpio_on
-    @LDR	R0, =sleep_time
-	@BL	sleep_ms
-	@MOV	R0, #LED_PIN2
-	@BL	gpio_off
-	@MOV	R0, #LED_PIN3
-	@BL	gpio_on
-    @LDR	R0, =sleep_time
-	@BL	sleep_ms
-	@MOV	R0, #LED_PIN3
-	@BL	gpio_off
-       
+	MOV	R0, #LED_PIN1	
+	BL	gpio_on
+	LDR	R0, =sleep_time
+	BL	sleep_ms
+	MOV	R0, #LED_PIN1	
+	BL	gpio_off
+	MOV	R0, #LED_PIN2
+	BL	gpio_on
+    LDR	R0, =sleep_time
+	BL	sleep_ms
+
+	MOV R0, #INPUT_PIN1	@Input button at GP0
+	BL gpio_get	@Read input value on GP0
+	MOV R1, R0	@Move input value for use with printf
+	LDR R0, =print_str
+	BL printf
+
+	MOV R0, #INPUT_PIN2	@Input button at GP0
+	BL gpio_get	@Read input value on GP0
+	MOV R1, R0	@Move input value for use with printf
+	LDR R0, =print_str
+	BL printf
 
 
-	
-	   
-    B	loop	@ loop forever
+    B       loop	@ loop forever
 
 @ Initialize the GPIO to SIO. r0 = pin to init.
 gpioinit:
@@ -118,6 +99,15 @@ gpio_on:
 	STR	R3, [R2, #SIO_GPIO_OUT_SET_OFFSET]
 	BX	LR
 
+@ Read value from an input pin
+gpio_get:
+	MOV	R3, #1
+	LSL	R3, R0	@ shift over to pin position
+	LDR	R2, gpiobase	@ address we want
+	LDR	R0, [R2, #SIO_GPIO_IN_OFFSET]
+	@AND R0, R3
+	BX	LR
+
 @ Turn off a GPIO pin.
 gpio_off:
 	MOV	R3, #1
@@ -126,35 +116,12 @@ gpio_off:
 	STR	R3, [R2, #SIO_GPIO_OUT_CLR_OFFSET]
 	BX	LR
 
-@ Read a value from a GPIO pin
-gpio_get:
-	MOV R3, #1
-	LSL R3, R0	@ shift over to pin position
-	LDR R2, gpiobase	@ address we want
-	LDR R0, [R2, #SIO_GPIO_IN_OFFSET]
-	LSR R0, #20
-	BX LR
-
-pin1_on:
-	PUSH {LR}
-	MOV R0, #LED_PIN1
-	BL gpio_on
-	POP {PC}
-
-pin1_off:
-	PUSH {LR}
-	MOV R0, #LED_PIN1
-	BL gpio_off
-	POP {PC}
-
-
-.align  4	@ necessary alignment
+	      	.align  4	@ necessary alignment
 gpiobase:	.word	SIO_BASE     @ base of the GPIO registers
 iobank0:	.word	IO_BANK0_BASE @ base of io config registers
 padsbank0:	.word	PADS_BANK0_BASE
 setoffset:	.word	REG_ALIAS_SET_BITS
 
-
 .data
-.align  4	@ necessary alignment
-helloworld: .asciz   "Hello World %d\n"
+.align 4
+print_str:	.asciz	"Value in register %d\n"

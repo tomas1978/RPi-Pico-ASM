@@ -17,6 +17,7 @@ add_executable(flashledsasm
 pico_enable_stdio_uart(flashledsasm 0)
 pico_enable_stdio_usb(flashledsasm 1)
 
+
 pico_add_extra_outputs(flashledsasm)
 
 target_link_libraries(flashledsasm pico_stdlib)
